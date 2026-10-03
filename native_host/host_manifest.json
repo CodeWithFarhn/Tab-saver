@@ -1,0 +1,8 @@
+{
+  "name": "com.incognito_tab_saver.backup_agent",
+  "path": "extension_backup_agent.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://hbaidmjmiflgjccdgjfmeechmipeoebg/"
+  ]
+}

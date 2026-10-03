@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Incognito Tab Saver",
+  "version": "1.3.0",
+  "description": "Save and restore tagged sets of tabs from incognito/private windows, encrypted and stored locally.",
+  "incognito": "split",
+  "permissions": ["tabs", "storage", "nativeMessaging"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Incognito Tab Saver"
+  }
+}

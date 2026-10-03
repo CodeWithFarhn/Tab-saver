@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Incognito Tab Saver</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <main class="popup-frame">
+      <header class="app-header">
+        <div class="brand-wrap">
+          <div class="brand-mark" id="header-brand-mark" aria-hidden="true"></div>
+          <div>
+            <div class="brand-name">Incognito Tab Saver</div>
+            <div class="brand-subtitle">private session storage</div>
+          </div>
+        </div>
+        <button id="header-lock-btn" class="btn btn-ghost btn-icon hidden" title="Lock vault" aria-label="Lock vault"></button>
+      </header>
+
+      <!-- SETUP SCREEN -->
+      <section id="setup-screen" class="screen screen-setup fade-in hidden">
+        <div class="setup-hero">
+          <div class="hero-orbit" id="setup-hero-icon"></div>
+          <p class="eyebrow">Set up vault</p>
+          <h1>Create a local<br /><span>vault.</span></h1>
+          <p class="hero-copy">Create a password to encrypt and save your incognito sessions.</p>
+        </div>
+
+        <div class="surface setup-card">
+          <div class="card-heading">
+            <div>
+              <p class="eyebrow">Vault password</p>
+              <h2>Set a password</h2>
+            </div>
+            <div id="setup-heading-icon" class="heading-icon"></div>
+          </div>
+
+          <div class="form-stack">
+            <label class="field-label" for="setup-password">Password <span>6+ characters</span></label>
+            <div class="input-wrap">
+              <input id="setup-password" class="field" type="password" placeholder="Make it memorable, not obvious" autocomplete="new-password" />
+              <button id="toggle-setup-pw" class="input-action" type="button" aria-label="Toggle password visibility"></button>
+            </div>
+
+            <label class="field-label" for="setup-password-confirm">Confirm password</label>
+            <div class="input-wrap">
+              <input id="setup-password-confirm" class="field" type="password" placeholder="Repeat your password" autocomplete="new-password" />
+              <button id="toggle-setup-confirm-pw" class="input-action" type="button" aria-label="Toggle confirm password visibility"></button>
+            </div>
+
+            <div class="warning-row">
+              <div id="setup-warning-icon"></div>
+              <span>There is no password recovery. If you lose it, the vault can only be reset and its data wiped.</span>
+            </div>
+
+            <button id="setup-btn" class="btn btn-primary w-full">Create local vault &rarr;</button>
+            <p id="setup-status" class="validation-note"></p>
+          </div>
+
+          <div class="divider"><span>or</span></div>
+          <button id="import-trigger-setup" class="btn btn-ghost w-full">
+            <span id="import-setup-icon"></span> Import an encrypted backup
+          </button>
+          <button id="cloud-restore-setup" class="btn btn-ghost w-full" style="margin-top: 8px;">
+            <span id="cloud-restore-setup-icon"></span> Restore from Backblaze B2
+          </button>
+          <p class="microcopy">Encrypted locally with PBKDF2-SHA256 &amp; AES-GCM 256</p>
+        </div>
+      </section>
+
+      <!-- LOCK SCREEN -->
+      <section id="lock-screen" class="screen screen-locked fade-in hidden">
+        <div class="locked-hero">
+          <div class="lock-disc" id="lock-hero-icon"></div>
+          <p class="eyebrow">Vault locked</p>
+          <h1>Unlock your vault.</h1>
+          <p class="hero-copy">Enter your password to unlock your saved sessions.</p>
+        </div>
+
+        <div class="surface auth-card">
+          <form id="unlock-form">
+            <label class="field-label" for="unlock-password">Vault password</label>
+            <div class="input-wrap">
+              <input id="unlock-password" class="field" type="password" placeholder="Enter password" autocomplete="current-password" autofocus />
+              <button id="toggle-unlock-pw" class="input-action" type="button" aria-label="Toggle password visibility"></button>
+            </div>
+            <p id="unlock-status" class="validation-note"></p>
+            <button id="unlock-btn" type="submit" class="btn btn-primary w-full">
+              <span id="unlock-btn-icon"></span> Unlock vault
+            </button>
+          </form>
+
+          <div class="auth-links">
+            <button id="reset-link" type="button" class="text-button">Reset vault</button>
+            <button id="import-trigger-lock" type="button" class="text-button">Import backup</button>
+            <button id="cloud-restore-lock" type="button" class="text-button">Restore from B2</button>
+          </div>
+
+          <div id="reset-confirm-panel" class="confirm-panel hidden">
+            <div class="confirm-title"><span id="reset-alert-icon"></span> Wipe local vault?</div>
+            <p>This permanently deletes all saved sessions from this extension. The password cannot be recovered.</p>
+            <div class="confirm-actions">
+              <button id="cancel-reset-btn" type="button" class="btn btn-ghost">Keep it</button>
+              <button id="confirm-reset-btn" type="button" class="btn btn-danger">Wipe data</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="trust-strip">
+          <span id="trust-strip-icon"></span>
+          <span>Encrypted client-side. Zero plaintext leaves this machine.</span>
+        </div>
+      </section>
+
+      <!-- MAIN WORKSPACE -->
+      <div id="main-content" class="screen workspace fade-in hidden">
+        <!-- Incognito Permission Alert -->
+        <div id="permission-alert" class="permission-alert hidden">
+          <div id="permission-alert-icon" class="permission-icon"></div>
+          <div class="permission-text">
+            <strong>Allow access in Incognito</strong>
+            <span>Chrome needs permission to see and save private tabs.</span>
+          </div>
+          <button id="allow-incognito-btn" type="button" class="allow-btn">Allow</button>
+        </div>
+
+        <div class="workspace-meta">
+          <h1>Save incognito tabs.<br /><span>Restore them later.</span></h1>
+        </div>
+
+        <!-- Capture Card (Active in Incognito) -->
+        <section id="save-section" class="capture-card hidden">
+          <div class="capture-topline">
+            <div class="context-badge">
+              <span id="context-badge-icon"></span>
+              <span>Incognito window</span>
+            </div>
+            <span id="tab-count" class="tab-count mono">0 open</span>
+          </div>
+
+          <p class="capture-desc">Save all open tabs in this window.</p>
+
+          <div class="capture-fields">
+            <input id="session-name-input" class="field" type="text" placeholder="Name this session" maxlength="60" />
+            <input id="tag-input" class="field field-tag" type="text" placeholder="Tag" maxlength="30" />
+          </div>
+
+          <button id="save-btn" class="btn btn-primary w-full">Save tabs</button>
+          <p id="save-status" class="status"></p>
+        </section>
+
+        <!-- Standard Window Notice (When not incognito) -->
+        <section id="not-incognito" class="standard-state surface hidden">
+          <div id="standard-state-icon" class="standard-icon"></div>
+          <div>
+            <h2>Not an Incognito window</h2>
+            <p class="muted">Open this popup from an <strong>incognito / private window</strong> to save its tabs. Saved sessions below can still be restored from anywhere.</p>
+          </div>
+        </section>
+
+        <!-- Sessions Feed Toolbar -->
+        <div class="workspace-toolbar">
+          <div>
+            <p class="eyebrow">Sessions</p>
+            <h2 id="sessions-heading">Saved sessions</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button id="cloud-push-btn" class="btn btn-ghost btn-icon" title="Backup now to Backblaze B2" aria-label="Backup to B2"></button>
+            <button id="export-btn" class="btn btn-ghost btn-icon" title="Export encrypted backup" aria-label="Export backup"></button>
+            <button id="import-trigger-main" class="btn btn-ghost btn-icon" title="Import encrypted backup" aria-label="Import backup"></button>
+            <button id="toolbar-lock-btn" class="btn btn-ghost btn-icon" title="Lock vault" aria-label="Lock vault"></button>
+          </div>
+        </div>
+
+        <div id="backup-help-modal" class="inline-note hidden">
+          <span id="help-note-icon"></span>
+          <div class="help-text">
+            <strong>How backups work:</strong> Backups are exported as a password-protected JSON file. Your sessions remain encrypted with AES-256 and can only be decrypted with your password.
+          </div>
+          <button id="close-help-btn" type="button" class="icon-button" aria-label="Close help">&times;</button>
+        </div>
+
+        <section id="sessions-list" class="session-feed"></section>
+
+        <div id="empty-state" class="empty-state hidden">
+          <div id="empty-state-icon" class="empty-illustration"></div>
+          <h2>No saved sessions yet</h2>
+          <p class="muted">Open an incognito window with tabs you want to preserve and hit Save.</p>
+        </div>
+
+        <footer class="workspace-footer">
+          <div class="footer-trust">
+            <span id="footer-lock-icon"></span>
+            <span>Local encrypted storage</span>
+          </div>
+          <button id="backup-help-btn" type="button" class="text-button">How backups work</button>
+        </footer>
+      </div>
+
+      <input id="import-input" type="file" accept="application/json" class="hidden" />
+    </main>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
