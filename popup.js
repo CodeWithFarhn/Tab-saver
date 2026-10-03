@@ -26,9 +26,14 @@ const ICONS = {
   fileKey: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4 7V4a2 2 0 0 1 2-2h8.5L20 7.5V20a2 2 0 0 1-2 2h-6"/><circle cx="4" cy="16" r="2"/><path d="m10 10-4.5 4.5"/><path d="m9 11 1 1"/></svg>`,
   cloudUpload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/></svg>`,
   cloudDownload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>`,
+  search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
 };
 
 const el = {
+  toastBanner: document.getElementById("toast-banner"),
+  toastIcon: document.getElementById("toast-icon"),
+  toastMessage: document.getElementById("toast-message"),
+
   headerBrandMark: document.getElementById("header-brand-mark"),
   headerLockBtn: document.getElementById("header-lock-btn"),
   setupScreen: document.getElementById("setup-screen"),
@@ -84,6 +89,12 @@ const el = {
   backupHelpModal: document.getElementById("backup-help-modal"),
   helpNoteIcon: document.getElementById("help-note-icon"),
   closeHelpBtn: document.getElementById("close-help-btn"),
+
+  searchBarWrap: document.getElementById("search-bar-wrap"),
+  sessionSearchInput: document.getElementById("session-search-input"),
+  clearSearchBtn: document.getElementById("clear-search-btn"),
+  searchIcon: document.getElementById("search-icon"),
+
   sessionsList: document.getElementById("sessions-list"),
   emptyState: document.getElementById("empty-state"),
   emptyStateIcon: document.getElementById("empty-state-icon"),
@@ -95,6 +106,31 @@ const el = {
 let currentWindow = null;
 let currentTabs = [];
 let cryptoKey = null; // AES-GCM CryptoKey, lives only for popup lifetime
+
+// ---------- toast notifications ----------
+
+let toastTimer = null;
+function showToast(message, type = "info", duration = 3500) {
+  if (!el.toastBanner || !el.toastMessage) return;
+  el.toastMessage.textContent = message;
+
+  el.toastBanner.classList.remove("toast-success", "toast-error");
+  if (type === "success") {
+    el.toastBanner.classList.add("toast-success");
+    if (el.toastIcon) el.toastIcon.innerHTML = ICONS.checkCircle;
+  } else if (type === "error") {
+    el.toastBanner.classList.add("toast-error");
+    if (el.toastIcon) el.toastIcon.innerHTML = ICONS.alertTriangle;
+  } else {
+    if (el.toastIcon) el.toastIcon.innerHTML = ICONS.shieldCheck;
+  }
+
+  el.toastBanner.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.toastBanner.classList.add("hidden");
+  }, duration);
+}
 
 // ---------- populate static icons ----------
 
@@ -123,6 +159,7 @@ function populateIcons() {
   if (el.helpNoteIcon) el.helpNoteIcon.innerHTML = ICONS.fileKey;
   if (el.emptyStateIcon) el.emptyStateIcon.innerHTML = ICONS.archive;
   if (el.footerLockIcon) el.footerLockIcon.innerHTML = ICONS.lockKeyhole;
+  if (el.searchIcon) el.searchIcon.innerHTML = ICONS.search;
 }
 
 // ---------- crypto helpers ----------
@@ -577,17 +614,14 @@ async function attemptSave() {
   await renderSessions();
 }
 
-let saveStatusTimer = null;
 function setSaveStatus(text, isError) {
-  el.saveStatus.textContent = text;
-  el.saveStatus.classList.toggle("error", !!isError);
-  clearTimeout(saveStatusTimer);
-  saveStatusTimer = setTimeout(() => {
-    el.saveStatus.textContent = "";
-  }, 4000);
+  if (!text) return;
+  showToast(text, isError ? "error" : "success");
 }
 
-// ---------- render sessions ----------
+// ---------- render sessions with live search ----------
+
+let allCachedSessions = [];
 
 async function renderSessions() {
   let sessions;
@@ -596,20 +630,73 @@ async function renderSessions() {
   } catch {
     return;
   }
-  renderSessionsFromList(sessions);
+  allCachedSessions = sessions;
+  filterAndRenderSessions();
 }
 
-function renderSessionsFromList(sessions) {
+function filterAndRenderSessions() {
+  const query = (el.sessionSearchInput ? el.sessionSearchInput.value : "").trim().toLowerCase();
+  if (el.clearSearchBtn) {
+    el.clearSearchBtn.classList.toggle("hidden", !query);
+  }
+
+  const filtered = query
+    ? allCachedSessions.filter((s) => {
+        const nameMatch = (s.name || "").toLowerCase().includes(query);
+        const tagMatch = (s.tag || "").toLowerCase().includes(query);
+        const tabMatch = (s.tabs || []).some(
+          (t) => (t.title || "").toLowerCase().includes(query) || (t.url || "").toLowerCase().includes(query)
+        );
+        return nameMatch || tagMatch || tabMatch;
+      })
+    : allCachedSessions;
+
+  renderSessionsFromList(filtered, query);
+}
+
+if (el.sessionSearchInput) {
+  el.sessionSearchInput.addEventListener("input", filterAndRenderSessions);
+}
+if (el.clearSearchBtn) {
+  el.clearSearchBtn.addEventListener("click", () => {
+    if (el.sessionSearchInput) el.sessionSearchInput.value = "";
+    filterAndRenderSessions();
+    if (el.sessionSearchInput) el.sessionSearchInput.focus();
+  });
+}
+
+function renderSessionsFromList(sessions, filterQuery = "") {
   el.sessionsList.innerHTML = "";
 
-  const total = sessions.length;
-  el.sessionsHeading.textContent = total ? `${total} saved session${total === 1 ? "" : "s"}` : "No sessions saved yet";
+  const total = allCachedSessions.length;
+  if (el.searchBarWrap) {
+    el.searchBarWrap.classList.toggle("hidden", total === 0);
+  }
 
   if (total === 0) {
+    el.sessionsHeading.textContent = "No sessions saved yet";
     el.emptyState.classList.remove("hidden");
     return;
   }
+
   el.emptyState.classList.add("hidden");
+
+  if (filterQuery) {
+    el.sessionsHeading.textContent = `Found ${sessions.length} of ${total} session${total === 1 ? "" : "s"}`;
+  } else {
+    el.sessionsHeading.textContent = `${total} saved session${total === 1 ? "" : "s"}`;
+  }
+
+  if (sessions.length === 0 && filterQuery) {
+    const noResults = document.createElement("div");
+    noResults.className = "empty-state";
+    noResults.style.padding = "24px 12px";
+    noResults.innerHTML = `
+      <p class="muted" style="margin: 0;">No sessions matching "<strong>${escapeHtml(filterQuery)}</strong>"</p>
+    `;
+    el.sessionsList.appendChild(noResults);
+    return;
+  }
 
   sessions.forEach((session, index) => {
     const sessionName = session.name || session.tag || "Untitled session";
@@ -644,7 +731,13 @@ function renderSessionsFromList(sessions) {
           <span class="session-number mono">${String(index + 1).padStart(2, "0")}</span>
           <span class="session-title-wrap">
             <strong class="session-title-text" data-id="${session.id}">${escapeHtml(sessionName)}</strong>
-            <span>${escapeHtml(sessionTag)} <i></i> ${session.tabs.length} tabs <i></i> ${formatDate(session.savedAt)}</span>
+            <span class="session-meta">
+              <span class="session-tag-pill">${escapeHtml(sessionTag)}</span>
+              <span class="meta-dot">&bull;</span>
+              <span class="tab-badge">${session.tabs.length} tabs</span>
+              <span class="meta-dot">&bull;</span>
+              <span class="meta-date">${formatDate(session.savedAt)}</span>
+            </span>
           </span>
         </button>
         <div class="session-actions">
@@ -685,7 +778,7 @@ function renderSessionsFromList(sessions) {
     el.sessionsList.appendChild(row);
   });
 
-  // Attach favicons safely without violating CSP
+  // Attach favicons safely with fallback
   el.sessionsList.querySelectorAll(".tab-favicon-img").forEach((img) => {
     const src = img.dataset.src;
     if (!src) {
@@ -1048,20 +1141,13 @@ if (el.cloudPushBtn) {
     const vault = await getVault();
     if (!vault) return;
 
-    if (el.saveStatus) el.saveStatus.textContent = "Backing up to Backblaze B2...";
+    showToast("Backing up to Backblaze B2...", "info", 10000);
     chrome.runtime.sendMessage({ type: "cloudBackupPush" }, (res) => {
       if (chrome.runtime.lastError || !res?.ok) {
         const err = res?.error || chrome.runtime.lastError?.message || "Failed to push to B2";
-        if (el.saveStatus) el.saveStatus.textContent = "B2 backup failed: " + err;
+        showToast("B2 backup failed: " + err, "error", 5000);
       } else {
-        if (el.saveStatus) {
-          el.saveStatus.textContent = "Backup pushed to B2 successfully!";
-          setTimeout(() => {
-            if (el.saveStatus && el.saveStatus.textContent.includes("Backup pushed")) {
-              el.saveStatus.textContent = "";
-            }
-          }, 3000);
-        }
+        showToast("Backup pushed to Backblaze B2 successfully!", "success", 3500);
       }
     });
   });

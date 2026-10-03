@@ -19,6 +19,11 @@
         <button id="header-lock-btn" class="btn btn-ghost btn-icon hidden" title="Lock vault" aria-label="Lock vault"></button>
       </header>
 
+      <div id="toast-banner" class="toast-banner hidden" role="status" aria-live="polite">
+        <span id="toast-icon" class="toast-icon"></span>
+        <span id="toast-message" class="toast-message"></span>
+      </div>
+
       <!-- SETUP SCREEN -->
       <section id="setup-screen" class="screen screen-setup fade-in hidden">
         <div class="setup-hero">
@@ -180,6 +185,12 @@
             <strong>How backups work:</strong> Backups are exported as a password-protected JSON file. Your sessions remain encrypted with AES-256 and can only be decrypted with your password.
           </div>
           <button id="close-help-btn" type="button" class="icon-button" aria-label="Close help">&times;</button>
+        </div>
+
+        <div id="search-bar-wrap" class="search-wrap hidden">
+          <span id="search-icon" class="search-icon"></span>
+          <input id="session-search-input" class="search-field" type="text" placeholder="Filter by name, tag, or domain..." autocomplete="off" />
+          <button id="clear-search-btn" class="clear-search-btn hidden" type="button" aria-label="Clear search">&times;</button>
         </div>
 
         <section id="sessions-list" class="session-feed"></section>

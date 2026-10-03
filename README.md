@@ -6,6 +6,20 @@ All session data is encrypted at rest using AES-256-GCM with keys derived via PB
 
 ---
 
+## Why This Exists: Privacy Philosophy & Complete Data Control
+
+Standard browsers automatically purge all private/incognito tabs the instant a window is closed, offering no native way to suspend, organize, or resume private research sessions. At the same time, traditional commercial tab managers pose severe privacy hazards:
+- They request broad read permissions across all web traffic.
+- They upload unencrypted browsing histories to commercial third-party servers.
+- They embed telemetry, analytics trackers, or user behavioral tracking.
+
+**Incognito Tab Saver was engineered to solve this with absolute data sovereignty:**
+1. **Total Personal Control**: No user accounts, no telemetry, no tracking scripts, and no central servers.
+2. **Zero Plaintext on Disk**: Every saved session is converted to an AES-256-GCM authenticated ciphertext blob before being committed to browser storage. Anyone inspecting your device or storage sees only encrypted noise.
+3. **Decentralized, Self-Owned Cloud Sync**: Cloud synchronization is strictly opt-in and connects directly to your personal Backblaze B2 (or S3-compatible) bucket using credentials stored in your operating system's keystore. The master decryption key is never transmitted or shared.
+
+---
+
 ## Key Features
 
 - **Zero-Knowledge Encryption**: Master passwords are never written to disk, stored in settings, or transmitted over the wire. The encryption key resides strictly in volatile extension memory while the popup is unlocked.
