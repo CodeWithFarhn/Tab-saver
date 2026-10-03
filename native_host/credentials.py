@@ -59,14 +59,9 @@ def save_b2_credentials(
     if not endpoint:
         endpoint = f"https://s3.{region}.backblazeb2.com"
 
-    # Auto-sanitize if accidental duplicate prefix was pasted (32 chars instead of 31 chars)
-    sanitized_app_key = application_key.strip()
-    if sanitized_app_key.startswith("KK00") and len(sanitized_app_key) == 32:
-        sanitized_app_key = sanitized_app_key[1:]
-
     data = {
         "key_id": key_id.strip(),
-        "application_key": sanitized_app_key,
+        "application_key": application_key.strip(),
         "bucket": bucket.strip(),
         "region": region.strip(),
         "endpoint": endpoint.strip().rstrip("/"),

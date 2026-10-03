@@ -43,12 +43,23 @@ def sign_s3_request(
 
     parsed = urllib.parse.urlparse(url)
     host = parsed.netloc
-    canonical_uri = parsed.path or "/"
 
-    # Canonical query string
+    # Canonical URI: Must be strictly RFC 3986 percent-encoded; forward slashes preserved for S3
+    raw_path = parsed.path or "/"
+    if not raw_path.startswith("/"):
+        raw_path = "/" + raw_path
+    canonical_uri = urllib.parse.quote(raw_path, safe="-_.~/")
+
+    # Canonical query string:
+    # 1. Sort by parameter name (and value) in character code order (ASCII)
+    # 2. URI-encode name and value using strict RFC 3986 (spaces as %20, safe='-_.~')
+    # 3. Join as name=value with &
     query_params = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-    query_params.sort(key=lambda x: x[0])
-    canonical_querystring = urllib.parse.urlencode(query_params)
+    query_params.sort(key=lambda x: (x[0], x[1]))
+    canonical_querystring = "&".join(
+        f"{urllib.parse.quote(k, safe='-_.~')}={urllib.parse.quote(v, safe='-_.~')}"
+        for k, v in query_params
+    )
 
     # Prepare headers for signing
     out_headers = dict(headers)

@@ -26,10 +26,37 @@ def main():
         print("Error: Key ID is required.")
         return
 
-    app_key = getpass.getpass("Backblaze Application Key: ").strip()
-    if not app_key:
-        print("Error: Application Key is required.")
-        return
+    while True:
+        app_key = getpass.getpass("Backblaze Application Key: ").strip()
+        if not app_key:
+            print("Error: Application Key is required.")
+            return
+
+        if len(app_key) == 32 and app_key.startswith("KK00"):
+            print("\n[WARNING] Your Application Key is 32 characters long and starts with 'KK00'.")
+            print("Standard Backblaze Application Keys typically start with 'K00' (31 characters).")
+            print("You may have accidentally pasted an extra leading 'K'.")
+            fix = input("Would you like to trim the leading 'K' to make it 31 characters? (y/N/re-enter [r]): ").strip().lower()
+            if fix == "r":
+                continue
+            elif fix == "y":
+                app_key = app_key[1:]
+                print("Trimmed leading 'K'. Using key length:", len(app_key))
+                break
+            else:
+                print("Keeping key as entered.")
+                break
+        elif len(app_key) != 31:
+            print(f"\n[NOTE] Key length is {len(app_key)} characters (standard B2 app keys are usually 31 characters).")
+            proceed = input("Continue with this key? (Y/n/re-enter [r]): ").strip().lower()
+            if proceed == "r":
+                continue
+            elif proceed == "n":
+                return
+            else:
+                break
+        else:
+            break
 
     bucket = input("Bucket Name: ").strip()
     if not bucket:
