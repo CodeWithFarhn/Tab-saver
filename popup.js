@@ -287,7 +287,8 @@ function isRestorableUrl(url) {
 function sanitizeFaviconUrl(url) {
   if (typeof url !== "string") return "";
   if (/^https?:\/\//i.test(url)) return url;
-  if (/^data:image\//i.test(url)) return url;
+  // Discard massive base64 images that bloat vault size by megabytes; allow only tiny inline vectors
+  if (/^data:image\//i.test(url) && url.length <= 512) return url;
   return "";
 }
 
@@ -592,7 +593,7 @@ async function attemptSave() {
     tabs: savable.map((t) => ({
       url: t.url,
       title: t.title,
-      favIconUrl: t.favIconUrl || null,
+      favIconUrl: sanitizeFaviconUrl(t.favIconUrl) || null,
       pinned: t.pinned,
     })),
   };
@@ -654,11 +655,19 @@ function filterAndRenderSessions() {
   renderSessionsFromList(filtered, query);
 }
 
+let searchDebounceTimer = null;
+
 if (el.sessionSearchInput) {
-  el.sessionSearchInput.addEventListener("input", filterAndRenderSessions);
+  el.sessionSearchInput.addEventListener("input", () => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      filterAndRenderSessions();
+    }, 100);
+  });
 }
 if (el.clearSearchBtn) {
   el.clearSearchBtn.addEventListener("click", () => {
+    clearTimeout(searchDebounceTimer);
     if (el.sessionSearchInput) el.sessionSearchInput.value = "";
     filterAndRenderSessions();
     if (el.sessionSearchInput) el.sessionSearchInput.focus();
@@ -697,6 +706,9 @@ function renderSessionsFromList(sessions, filterQuery = "") {
     el.sessionsList.appendChild(noResults);
     return;
   }
+
+  // Use DocumentFragment to batch DOM insertions into a single layout reflow
+  const fragment = document.createDocumentFragment();
 
   sessions.forEach((session, index) => {
     const sessionName = session.name || session.tag || "Untitled session";
@@ -775,8 +787,10 @@ function renderSessionsFromList(sessions, filterQuery = "") {
       </div>
     `;
 
-    el.sessionsList.appendChild(row);
+    fragment.appendChild(row);
   });
+
+  el.sessionsList.appendChild(fragment);
 
   // Attach favicons safely with fallback
   el.sessionsList.querySelectorAll(".tab-favicon-img").forEach((img) => {
